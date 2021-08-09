@@ -45,7 +45,7 @@ const Home = () => {
     }
   }, [address]);
 
-  if (networkId !== 137) {
+  if (networkId !== 137 && !process.env.REACT_APP_OFFCHAIN) {
     return (
       <Layout>
         <div className={globalStyles.container}>

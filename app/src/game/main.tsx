@@ -37,7 +37,7 @@ const Main = () => {
     setConfig({
       type: Phaser.AUTO,
       physics: {
-        default: "arcade",
+        default: 'matter',
         arcade: {
           gravity: { y: 0 },
           debug: process.env.NODE_ENV === "development",
