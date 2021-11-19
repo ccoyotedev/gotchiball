@@ -16,6 +16,7 @@ export class Player extends Phaser.Physics.Matter.Sprite {
   private isTouchingGround = true;
   private jumpVelocity = 15;
   private kick?: Phaser.Physics.Matter.Sprite;
+  public winningState = false;
 
   constructor({ scene, x, y, key }: Props) {
     super(scene.matter.world, x, y, key, "", {
@@ -38,6 +39,12 @@ export class Player extends Phaser.Physics.Matter.Sprite {
   private addAnimations = (key: string) => {
     this.scene.anims.create({
       key: "idle",
+      frames: this.scene.anims.generateFrameNumbers(key || "", {
+        frames: [0],
+      }),
+    });
+    this.scene.anims.create({
+      key: "winning",
       frames: this.scene.anims.generateFrameNumbers(key || "", {
         start: 0,
         end: 1,
@@ -68,17 +75,17 @@ export class Player extends Phaser.Physics.Matter.Sprite {
 
   public moveLeft = () => {
     this.setVelocityX(-this.speed);
-    this.anims.play("left", true);
+    this.anims.play(this.winningState ? "winning" : "left", true);
   };
 
   public moveRight = () => {
     this.setVelocityX(this.speed);
-    this.anims.play("right", true);
+    this.anims.play(this.winningState ? "winning" : "right", true);
   };
 
   public goIdle = () => {
     this.setVelocityX(0);
-    this.anims.play("idle", true);
+    this.anims.play(this.winningState ? "winning" : "idle", true);
   };
 
   public jump = () => {

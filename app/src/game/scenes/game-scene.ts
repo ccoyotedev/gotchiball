@@ -171,6 +171,7 @@ export class GameScene extends Phaser.Scene {
       this.volleyball.setCollisionCategory(this.volleyballCat);
       this.goalScored = false;
       this.goalText.destroy();
+      this.player.winningState = false;
     }, 3000);
   }
 
@@ -192,6 +193,7 @@ export class GameScene extends Phaser.Scene {
       this.volleyball.y > this.playerTwoGoal.bounds.y_min
     ) {
       this.playerOneScoreLabel.add(1);
+      this.player.winningState = true;
       this.handleGoalScored();
     }
   }
