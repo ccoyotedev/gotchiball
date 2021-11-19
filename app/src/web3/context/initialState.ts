@@ -5,13 +5,12 @@ export interface State {
   address?: string;
   provider?: Web3Provider;
   usersAavegotchis?: Array<AavegotchiObject>;
-  selectedAavegotchiIndex: number;
+  selectedAavegotchiId?: string;
   loading: boolean;
-  error?: Error;
+  error?: Error | unknown;
   networkId?: number;
 }
 
 export const initialState: State = {
   loading: false,
-  selectedAavegotchiIndex: 0,
 }

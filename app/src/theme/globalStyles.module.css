@@ -1,4 +1,4 @@
-@import 'theme/vars.css';
+@import "theme/vars.css";
 
 .container {
   max-width: var(--container-width-xl);

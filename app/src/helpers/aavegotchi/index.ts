@@ -1,5 +1,47 @@
 import { mouths, eyes, defaultGotchi } from "./svg";
 import { Tuple, AavegotchiObject } from "types";
+import { Signer } from '@ethersproject/abstract-signer';
+import { Provider } from "@ethersproject/abstract-provider";
+import { useDiamondCall } from "web3/actions";
+import { collateralToAddress, Collaterals} from 'helpers/vars';
+
+interface GotchiOptions {
+  haunt?: "1" | "2",
+  numericTraits?: Tuple<number, 6>,
+  wearables?: Tuple<number, 16>,
+  collateral?: Collaterals,
+  name?: string,
+  id?: string,
+}
+
+export const getPreviewGotchi = async (provider: Signer | Provider, options?: GotchiOptions): Promise<AavegotchiObject> => {
+  const withSetsNumericTraits: Tuple<number, 6> = options?.numericTraits || [50, 50, 50, 50, 50, 50];
+  const equippedWearables: Tuple<number, 16> = options?.wearables || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const svg = await useDiamondCall<Tuple<string, 4>>(provider, {
+    name: "previewSideAavegotchi",
+    parameters: [
+      options?.haunt || "1",
+      options?.collateral ? collateralToAddress[options.collateral] : collateralToAddress["aWETH"],
+      withSetsNumericTraits,
+      equippedWearables,
+    ],
+  });
+  const gotchi = {
+    id: options?.id || '0000',
+    name: options?.name || 'Aavegotchi',
+    withSetsNumericTraits,
+    svg: svg,
+    equippedWearables,
+    status: 3,
+    withSetsRarityScore: 300,
+    owner: {
+      id: '0000'
+    },
+  }
+  return gotchi;
+}
+
+
 
 export const getDefaultGotchi = (): AavegotchiObject => {
   return {
@@ -9,6 +51,10 @@ export const getDefaultGotchi = (): AavegotchiObject => {
     svg: defaultGotchi,
     equippedWearables: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     status: 3,
+    withSetsRarityScore: 300,
+    owner: {
+      id: '0000'
+    },
   }
 }
 
@@ -51,10 +97,10 @@ export const bounceAnimation = (svg: string) => {
   const style = `
     @keyframes downHands {
       from {
-        --hand_translateY: -4px;
+        --hand_translateY: -1px;
       }
       to {
-        --hand_translateY: -3.5px;
+        --hand_translateY: -0.5px;
       }
     }
     @keyframes up {
@@ -108,6 +154,7 @@ export const bounceAnimation = (svg: string) => {
       animation-iteration-count: infinite;
       animation-timing-function: linear;
       animation-timing-function: steps(2);
+      transform: translate(0, var(--hand_translateY));
     }
     .wearable-bg {
       animation-name: none;
@@ -125,18 +172,18 @@ export const bounceAnimation = (svg: string) => {
  * @returns {string} Returns customised SVG
  */
 export const raiseHands = (svg: string, arms?: {left?: number, right?: number}) => {
-  const leftArm = arms?.left === 201 ? `
+  const leftArm = (arms?.left && [207, 217, 223].includes(arms?.left)) ? `
       .wearable-hand-left {
         transform: translateY(calc(14px + var(--hand_translateY, -4px))) scaleY(-1);
         transform-origin: 50% 50%;
       }
     ` : ''
-    const rightArm = arms?.right === 201 ? `
-      .wearable-hand-right {
-        transform: translateY(calc(14px + var(--hand_translateY, -4px))) scaleY(-1);
-        transform-origin: 50% 50%;
-      }
-    ` : ``
+  const rightArm = (arms?.right && [207, 217, 223].includes(arms?.right)) ? `
+    .wearable-hand-right {
+      transform: translateY(calc(14px + var(--hand_translateY, -4px))) scaleY(-1);
+      transform-origin: 50% 50%;
+    }
+  ` : ``
 
   const style = `
     .gotchi-handsDownClosed {

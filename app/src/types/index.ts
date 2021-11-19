@@ -1,4 +1,4 @@
-import { ethers } from 'ethers';
+import { ethers } from "ethers";
 export interface Tuple<T extends unknown, L extends number> extends Array<T> {
   0: T;
   length: L;
@@ -6,23 +6,25 @@ export interface Tuple<T extends unknown, L extends number> extends Array<T> {
 
 export interface AavegotchiGameObject extends AavegotchiObject {
   spritesheetKey: string;
-  svg: string;
+  svg: Tuple<string, 4>;
 }
 
 export interface AavegotchiObject extends AavegotchiContractObject {
-  svg?: string;
+  svg?: Tuple<string, 4>;
 }
 
 export interface AavegotchiContractObject {
-  // collateral: string;
-  name: string;
-  // modifiedNumericTraits: number[];
-
   // Only in subgraph
   withSetsNumericTraits: Tuple<number, 6>;
   id: string;
-  // withSetsRarityScore?: ethers.BigNumber;
+  withSetsRarityScore: number;
+  owner: {
+    id: string;
+  };
 
+  // collateral: string;
+  name: string;
+  // modifiedNumericTraits: number[];
   // numericTraits: number[];
   // owner: string;
   // randomNumber: string;
@@ -73,14 +75,14 @@ export interface ItemObject {
 }
 
 export interface SubmitScoreReq {
-  name: string,
-  tokenId: string,
+  name: string;
+  tokenId: string;
 }
 
 export interface HighScore {
-  tokenId: string,
-  score: number,
-  name: string,
+  tokenId: string;
+  score: number;
+  name: string;
 }
 
 export interface CustomError extends Error {

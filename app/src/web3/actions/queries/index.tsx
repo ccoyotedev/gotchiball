@@ -7,11 +7,15 @@ export interface AavegotchisOfOwner {
 export const getAllAavegotchisOfOwner = (owner: string) => {
   const query = `
     {
-      aavegotchis(first: 500, orderBy: gotchiId, where: { owner:"${owner.toLowerCase()}"}) {
+      aavegotchis(first: 1000, orderBy: withSetsRarityScore, orderDirection: desc,  where: { owner:"${owner.toLowerCase()}", status: 3 }) {
         id
         name
         withSetsNumericTraits
         equippedWearables
+        withSetsRarityScore
+        owner {
+          id
+        }
       }
     }
   `

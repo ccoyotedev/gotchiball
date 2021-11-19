@@ -1,4 +1,4 @@
-import { AavegotchiGameObject, AavegotchiObject } from "types";
+import { AavegotchiGameObject, AavegotchiObject, Tuple } from "types";
 import { getGameHeight, getGameWidth } from "game/helpers";
 import { assets, SpritesheetAsset } from "game/assets";
 import { constructSpritesheet } from "../helpers/spritesheet";
@@ -6,7 +6,7 @@ import { customiseSvg } from "helpers/aavegotchi";
 import { Socket } from "socket.io-client";
 
 interface AavegotchiWithSvg extends AavegotchiObject {
-  svg: string;
+  svg: Tuple<string, 4>;
 }
 
 const sceneConfig: Phaser.Types.Scenes.SettingsConfig = {
@@ -58,7 +58,6 @@ export class BootScene extends Phaser.Scene {
       "filecomplete",
       (key: string) => {
         // As the spritesheet is the last asset to load in, we can attempt to start the game
-        console.log(key);
         if (key === "PLAYER") {
           this.assetsLoaded = true;
           this.loadingText?.setText(`Connecting to server...`);
@@ -160,6 +159,12 @@ export class BootScene extends Phaser.Scene {
           (file as SpritesheetAsset).data
         );
         break;
+      case "TILEMAP_TILES":
+        this.load.image(file.key, file.src);
+        break;
+      case "TILEMAP_MAP":
+        this.load.tilemapTiledJSON(file.key, file.src);
+        break;
       case "JSON":
         this.load.json(file.key, file.src);
         break;
@@ -177,16 +182,21 @@ export class BootScene extends Phaser.Scene {
     const svg = gotchiObject.svg;
     const spriteMatrix = [
       [
-        customiseSvg(svg, { removeBg: true }),
-        customiseSvg(svg, {
+        customiseSvg(svg[0], { removeBg: true }),
+        customiseSvg(svg[0], {
           armsUp: true,
           eyes: "happy",
           float: true,
           removeBg: true,
         }),
       ],
+      // Left
+      [customiseSvg(svg[1], { removeBg: true })],
+      // Right
+      [customiseSvg(svg[2], { removeBg: true })],
+      // Right
+      [customiseSvg(svg[3], { removeBg: true })],
     ];
-
     const { src, dimensions } = await constructSpritesheet(spriteMatrix);
     this.load.spritesheet(gotchiObject.spritesheetKey, src, {
       frameWidth: dimensions.width / dimensions.x,

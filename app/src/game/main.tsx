@@ -5,17 +5,20 @@ import { useWeb3 } from "web3/context";
 import { Redirect } from "react-router";
 import Scenes from "./scenes";
 import io, { Socket } from "socket.io-client";
-import { AavegotchiObject } from "types";
+import { AavegotchiObject, Tuple } from "types";
 import { useDiamondCall } from "web3/actions";
 
 const Main = () => {
   const {
-    state: { usersAavegotchis, selectedAavegotchiIndex, provider },
+    state: { usersAavegotchis, selectedAavegotchiId, provider },
   } = useWeb3();
   const [initialised, setInitialised] = useState(true);
   const [config, setConfig] = useState<GameInstance>();
 
-  const startGame = async (socket: Socket, selectedGotchi: AavegotchiObject) => {
+  const startGame = async (
+    socket: Socket,
+    selectedGotchi: AavegotchiObject
+  ) => {
     let width = window.innerWidth;
     let height = width / 1.778;
 
@@ -27,19 +30,21 @@ const Main = () => {
     if (!selectedGotchi.svg) {
       try {
         if (!provider) throw "Not connected to web3";
-        const svg = await useDiamondCall<string>(provider, {name: "getAavegotchiSvg", parameters: [selectedGotchi.id]});
+        const svg = await useDiamondCall<Tuple<string, 4>>(provider, {
+          name: "getAavegotchiSideSvgs",
+          parameters: [selectedGotchi.id],
+        });
         selectedGotchi.svg = svg;
       } catch (err) {
         console.error(err);
       }
     }
-    
+
     setConfig({
       type: Phaser.AUTO,
       physics: {
-        default: 'matter',
-        arcade: {
-          gravity: { y: 0 },
+        default: "matter",
+        matter: {
           debug: process.env.NODE_ENV === "development",
         },
       },
@@ -58,20 +63,25 @@ const Main = () => {
           setInitialised(false);
           game.registry.merge({
             selectedGotchi,
-            socket
+            socket,
           });
         },
       },
     });
-  }
+  };
 
   useEffect(() => {
-    if (usersAavegotchis) {
+    if (usersAavegotchis && selectedAavegotchiId) {
       // Socket is called here so we can take advantage of the useEffect hook to disconnect upon leaving the game screen
-      const socket = io(process.env.REACT_APP_SERVER_PORT || 'http://localhost:8080');
-      const selectedGotchi = usersAavegotchis[selectedAavegotchiIndex];
-      
-      startGame(socket, selectedGotchi)
+      const socket = io(
+        process.env.REACT_APP_SERVER_PORT || "http://localhost:8080"
+      );
+      const selectedGotchi = usersAavegotchis.find(
+        (gotchi) => gotchi.id === selectedAavegotchiId
+      );
+      if (!selectedGotchi) return;
+
+      startGame(socket, selectedGotchi);
 
       return () => {
         socket.emit("handleDisconnect");

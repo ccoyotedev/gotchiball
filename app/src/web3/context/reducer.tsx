@@ -1,4 +1,5 @@
 import { State } from "./initialState";
+import { Tuple } from "types";
 
 export type Action =
   | {
@@ -7,7 +8,7 @@ export type Action =
     }
   | {
       type: "SET_SELECTED_AAVEGOTCHI";
-      selectedAavegotchiIndex: State["selectedAavegotchiIndex"];
+      selectedAavegotchiId: State["selectedAavegotchiId"];
     }
   | {
       type: "START_ASYNC";
@@ -26,7 +27,7 @@ export type Action =
   | {
       type: "UPDATE_AAVEGOTCHI_SVG";
       tokenId: string;
-      svg: string;
+      svg: Tuple<string, 4>;
     }
   | {
       type: "SET_PROVIDER";
@@ -48,7 +49,7 @@ export const reducer = (state: State, action: Action): State => {
     case "SET_SELECTED_AAVEGOTCHI": {
       return {
         ...state,
-        selectedAavegotchiIndex: action.selectedAavegotchiIndex,
+        selectedAavegotchiId: action.selectedAavegotchiId,
       };
     }
     case "START_ASYNC": {
