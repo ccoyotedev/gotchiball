@@ -4,9 +4,21 @@ import { assets, SpritesheetAsset } from "game/assets";
 import { constructSpritesheet } from "../helpers/spritesheet";
 import { customiseSvg } from "helpers/aavegotchi";
 import { Socket } from "socket.io-client";
+import { useDiamondCall } from "web3/actions";
+import { providers } from "ethers";
 
 interface AavegotchiWithSvg extends AavegotchiObject {
   svg: Tuple<string, 4>;
+}
+
+export interface ServerGotchiObject {
+  name: string;
+  tokenId: string;
+  hauntId: string;
+  collateralAddress: string;
+  numericTraits: Tuple<number, 6>;
+  equippedWearables: Tuple<number, 16>;
+  key?: string;
 }
 
 const sceneConfig: Phaser.Types.Scenes.SettingsConfig = {
@@ -19,14 +31,19 @@ const sceneConfig: Phaser.Types.Scenes.SettingsConfig = {
  * The initial scene that loads all necessary assets to the game.
  */
 export class BootScene extends Phaser.Scene {
-  private socket?: Socket;
+  private socket!: Socket;
+  private provider!: providers.Provider;
   private connected?: boolean;
   private assetsLoaded?: boolean;
-  private gotchi?: AavegotchiGameObject;
+  private gotchi!: AavegotchiGameObject;
   private loadIndex: number;
   private progressBarContainer?: Phaser.GameObjects.Rectangle;
   private progressBar?: Phaser.GameObjects.Rectangle;
   private loadingText?: Phaser.GameObjects.Text;
+  private opponentFound?: boolean;
+  private opponent?: ServerGotchiObject;
+  private opponentLoaded?: boolean;
+  private playerNo?: 1 | 2;
 
   constructor() {
     super(sceneConfig);
@@ -36,6 +53,9 @@ export class BootScene extends Phaser.Scene {
   public preload = (): void => {
     // Construct progress bar
     this.createProgressBar();
+
+    // Set provider
+    this.provider = this.game.registry.values.provider as providers.Provider;
 
     // Construct gotchi game object from registry
     const selectedGotchi = this.game.registry.values
@@ -53,18 +73,39 @@ export class BootScene extends Phaser.Scene {
         })
       : this.handleConnection();
 
+    // Listens to see if opponent is found
+    this.socket?.on(
+      "handleMatchMade",
+      (players: Tuple<ServerGotchiObject, 2>) => {
+        console.log(players);
+        this.opponentFound = true;
+        this.playerNo = (players.findIndex(
+          (item) => item.tokenId === this.gotchi.id
+        ) + 1) as 1 | 2;
+
+        this.constructOpponent(players[this.playerNo % 2]);
+      }
+    );
+
     // Listener that triggers when an asset has loaded
     this.load.on(
       "filecomplete",
       (key: string) => {
+        console.log(key);
         // As the spritesheet is the last asset to load in, we can attempt to start the game
+        if (key === "OPPONENT") {
+          this.opponentLoaded = true;
+          this.startGame();
+        }
         if (key === "PLAYER") {
           this.assetsLoaded = true;
-          this.loadingText?.setText(`Connecting to server...`);
           this.startGame();
         }
         if (this.loadIndex === assets.length && this.gotchi) {
-          this.loadInGotchiSpritesheet(this.gotchi);
+          this.loadInGotchiSpritesheet(
+            this.gotchi.svg,
+            this.gotchi.spritesheetKey
+          );
         } else {
           this.loadNextFile(this.loadIndex);
         }
@@ -83,17 +124,39 @@ export class BootScene extends Phaser.Scene {
     this.socket?.emit("setGotchiData", {
       name: gotchi.name,
       tokenId: gotchi.id,
+      hauntId: gotchi.hauntId,
+      collateralAddress: gotchi.collateral,
+      numericTraits: gotchi.withSetsNumericTraits,
+      equippedWearables: gotchi.equippedWearables,
     });
-
-    this.startGame();
   };
 
   /**
    * If all the assets are loaded in, and user is connected to server, start game
    */
   private startGame = () => {
-    if (this.assetsLoaded && this.connected) {
-      this.scene.start("Game", { selectedGotchi: this.gotchi });
+    if (this.assetsLoaded && !this.connected)
+      this.loadingText?.setText(`Connecting to server...`);
+    if (this.assetsLoaded && this.connected && !this.opponentFound)
+      this.loadingText?.setText(`Looking for opponent...`);
+    if (
+      this.assetsLoaded &&
+      this.connected &&
+      this.opponentFound &&
+      !this.opponentLoaded
+    )
+      this.loadingText?.setText(`Constructing opponent...`);
+    if (
+      this.assetsLoaded &&
+      this.connected &&
+      this.opponentFound &&
+      this.opponentLoaded
+    ) {
+      this.scene.start("Game", {
+        selectedGotchi: this.gotchi,
+        playerNo: this.playerNo,
+        opponent: this.opponent,
+      });
     }
   };
 
@@ -177,13 +240,13 @@ export class BootScene extends Phaser.Scene {
    * Constructs and loads in the Aavegotchi spritesheet, you can use customiseSVG() to create custom poses and animations
    */
   private loadInGotchiSpritesheet = async (
-    gotchiObject: AavegotchiGameObject
+    svgArray: Tuple<string, 4>,
+    key: string
   ) => {
-    const svg = gotchiObject.svg;
     const spriteMatrix = [
       [
-        customiseSvg(svg[0], { removeBg: true }),
-        customiseSvg(svg[0], {
+        customiseSvg(svgArray[0], { removeBg: true }),
+        customiseSvg(svgArray[0], {
           armsUp: true,
           eyes: "happy",
           float: true,
@@ -191,17 +254,58 @@ export class BootScene extends Phaser.Scene {
         }),
       ],
       // Left
-      [customiseSvg(svg[1], { removeBg: true })],
+      [customiseSvg(svgArray[1], { removeBg: true })],
       // Right
-      [customiseSvg(svg[2], { removeBg: true })],
+      [customiseSvg(svgArray[2], { removeBg: true })],
       // Right
-      [customiseSvg(svg[3], { removeBg: true })],
+      [customiseSvg(svgArray[3], { removeBg: true })],
     ];
     const { src, dimensions } = await constructSpritesheet(spriteMatrix);
-    this.load.spritesheet(gotchiObject.spritesheetKey, src, {
+    this.load.spritesheet(key, src, {
       frameWidth: dimensions.width / dimensions.x,
       frameHeight: dimensions.height / dimensions.y,
     });
     this.load.start();
+  };
+
+  /**
+   *
+   * Fetch opponents Aavegotchi
+   */
+  private fetchOpponentSVG = async (
+    provider: providers.Provider,
+    opponent: {
+      hauntId: string;
+      collateralAddress: string;
+      numericTraits: Tuple<number, 6>;
+      equippedWearables: Tuple<number, 16>;
+    }
+  ) => {
+    const { hauntId, collateralAddress, numericTraits, equippedWearables } =
+      opponent;
+    const res = await useDiamondCall<Tuple<string, 4>>(provider, {
+      name: "previewSideAavegotchi",
+      parameters: [
+        hauntId,
+        collateralAddress,
+        numericTraits,
+        equippedWearables,
+      ],
+    });
+    return res;
+  };
+
+  /**
+   * Construct opponent
+   */
+  private constructOpponent = async (opponent: ServerGotchiObject) => {
+    console.log("Opponent: ", opponent.name);
+    const key = "OPPONENT";
+    const opponentSvg = await this.fetchOpponentSVG(this.provider, opponent);
+    this.loadInGotchiSpritesheet(opponentSvg, key);
+    this.opponent = {
+      ...opponent,
+      key,
+    };
   };
 }

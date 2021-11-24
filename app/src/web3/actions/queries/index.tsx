@@ -1,7 +1,7 @@
 import { AavegotchiContractObject } from "types";
 
 export interface AavegotchisOfOwner {
-  aavegotchis: Array<AavegotchiContractObject>
+  aavegotchis: Array<AavegotchiContractObject>;
 }
 
 export const getAllAavegotchisOfOwner = (owner: string) => {
@@ -13,11 +13,13 @@ export const getAllAavegotchisOfOwner = (owner: string) => {
         withSetsNumericTraits
         equippedWearables
         withSetsRarityScore
+        hauntId
+        collateral
         owner {
           id
         }
       }
     }
-  `
+  `;
   return query;
-}
+};

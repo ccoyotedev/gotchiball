@@ -2,10 +2,12 @@ import { getGameWidth, getGameHeight } from "../helpers";
 import { AavegotchiGameObject } from "types";
 
 import VolleyballSpawner from "../helpers/volleyballSpawner";
-import PlayerSpawner from "../helpers/playerSpawner";
 import { Player } from "game/objects";
 import ScoreLabel from "../ui/score-label";
 import GoalText from "../ui/goalText";
+import { Socket } from "socket.io-client";
+import { setSocketEventListeners } from "../helpers/socket.helper";
+import { ServerGotchiObject } from "./boot-scene";
 
 type MyMatterBodyConfig = Phaser.Types.Physics.Matter.MatterBodyConfig & {
   shape?: any;
@@ -28,13 +30,17 @@ interface Goal {
 }
 
 export class GameScene extends Phaser.Scene {
+  public socket?: Socket;
   private selectedGotchi!: AavegotchiGameObject;
+  private opponentGotchi!: ServerGotchiObject;
+  private playerNo!: 1 | 2;
 
   private cursorKeys!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private player!: Player;
+  public player1!: Player;
+  public player2!: Player;
+
   private volleyball!: Phaser.Physics.Matter.Sprite;
   private volleyballSpawner!: VolleyballSpawner;
-  private playerSpawner!: PlayerSpawner;
   private spaceKey!: Phaser.Input.Keyboard.Key;
   private playerOneGoal!: Goal;
   private playerTwoGoal!: Goal;
@@ -54,11 +60,21 @@ export class GameScene extends Phaser.Scene {
     super(sceneConfig);
   }
 
-  init = (data: { selectedGotchi: AavegotchiGameObject }): void => {
+  init = (data: {
+    selectedGotchi: AavegotchiGameObject;
+    playerNo: 1 | 2;
+    opponent: ServerGotchiObject;
+  }): void => {
+    console.log(data.selectedGotchi);
     this.selectedGotchi = data.selectedGotchi;
+    this.playerNo = data.playerNo;
+    this.opponentGotchi = data.opponent;
   };
 
   public create(): void {
+    this.socket = this.game.registry.values.socket;
+    setSocketEventListeners(this);
+
     // Create scene
     this.matter.world.setBounds(
       0,
@@ -75,12 +91,33 @@ export class GameScene extends Phaser.Scene {
     this.playerOneGoal = this.createGoal(1);
     this.playerTwoGoal = this.createGoal(2);
 
-    // Create player
-    this.playerSpawner = new PlayerSpawner(this, this.selectedGotchi);
-    this.player = this.playerSpawner.spawn();
+    // Create player 1
+    this.player1 = new Player({
+      scene: this,
+      x: getGameWidth(this) / 4,
+
+      y: getGameHeight(this) - 100,
+      key:
+        this.playerNo === 1
+          ? this.selectedGotchi.spritesheetKey
+          : (this.opponentGotchi.key as string),
+    });
+    this.add.existing(this.player1);
+
+    // Create player 2
+    this.player2 = new Player({
+      scene: this,
+      x: (3 * getGameWidth(this)) / 4,
+      y: getGameHeight(this) - 100,
+      key:
+        this.playerNo === 1
+          ? (this.opponentGotchi.key as string)
+          : this.selectedGotchi.spritesheetKey,
+    });
+    this.add.existing(this.player2);
 
     this.playerCat = this.matter.world.nextCategory();
-    this.player.setCollisionCategory(this.playerCat);
+    this.player1.setCollisionCategory(this.playerCat);
 
     // Create volleyball
     this.volleyballSpawner = new VolleyballSpawner(this, "ball");
@@ -106,7 +143,7 @@ export class GameScene extends Phaser.Scene {
 
     this.matter.setCollisionGroup(
       [
-        this.player.body as MatterJS.BodyType,
+        this.player1.body as MatterJS.BodyType,
         this.volleyball.body as MatterJS.BodyType,
       ],
       1
@@ -171,7 +208,7 @@ export class GameScene extends Phaser.Scene {
       this.volleyball.setCollisionCategory(this.volleyballCat);
       this.goalScored = false;
       this.goalText.destroy();
-      this.player.winningState = false;
+      this.player1.winningState = false;
     }, 3000);
   }
 
@@ -193,7 +230,7 @@ export class GameScene extends Phaser.Scene {
       this.volleyball.y > this.playerTwoGoal.bounds.y_min
     ) {
       this.playerOneScoreLabel.add(1);
-      this.player.winningState = true;
+      this.player1.winningState = true;
       this.handleGoalScored();
     }
   }
@@ -205,25 +242,25 @@ export class GameScene extends Phaser.Scene {
 
     switch (true) {
       case this.cursorKeys.left.isDown:
-        this.player.moveLeft();
+        this.socket?.emit("moveLeft", this.playerNo);
         break;
       case this.cursorKeys.right.isDown:
-        this.player.moveRight();
+        this.socket?.emit("moveRight", this.playerNo);
         break;
       default:
-        this.player.goIdle();
+        this.socket?.emit("goIdle", this.playerNo);
     }
 
     if (this.cursorKeys.up.isDown) {
-      this.player.jump();
+      this.socket?.emit("jump", this.playerNo);
     }
 
     if (this.cursorKeys.down.isDown) {
-      this.player.boostDown();
+      this.socket?.emit("boostDown", this.playerNo);
     }
 
     if (this.spaceKey.isDown) {
-      this.player.handleKick(this.cursorKeys.left.isDown ? "left" : "right", {
+      this.player1.handleKick(this.cursorKeys.left.isDown ? "left" : "right", {
         category: this.playerCat,
         mask: this.volleyballCat,
       });

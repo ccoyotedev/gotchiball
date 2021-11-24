@@ -22,7 +22,7 @@ export interface AavegotchiContractObject {
     id: string;
   };
 
-  // collateral: string;
+  collateral: string;
   name: string;
   // modifiedNumericTraits: number[];
   // numericTraits: number[];
@@ -33,7 +33,7 @@ export interface AavegotchiContractObject {
   // items: ItemsAndBalances[];
   equippedWearables: Tuple<number, 16>;
   // experience: ethers.BigNumber;
-  // hauntId: ethers.BigNumber;
+  hauntId: ethers.BigNumber;
   // kinship: ethers.BigNumber;
   // lastInteracted: string;
   // level: ethers.BigNumber;

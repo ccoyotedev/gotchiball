@@ -64,6 +64,7 @@ const Main = () => {
           game.registry.merge({
             selectedGotchi,
             socket,
+            provider,
           });
         },
       },

@@ -1,69 +1,78 @@
 import { mouths, eyes, defaultGotchi } from "./svg";
 import { Tuple, AavegotchiObject } from "types";
-import { Signer } from '@ethersproject/abstract-signer';
+import { Signer } from "@ethersproject/abstract-signer";
 import { Provider } from "@ethersproject/abstract-provider";
 import { useDiamondCall } from "web3/actions";
-import { collateralToAddress, Collaterals} from 'helpers/vars';
+import { collateralToAddress, Collaterals } from "helpers/vars";
+import { BigNumber } from "@ethersproject/bignumber";
 
 interface GotchiOptions {
-  haunt?: "1" | "2",
-  numericTraits?: Tuple<number, 6>,
-  wearables?: Tuple<number, 16>,
-  collateral?: Collaterals,
-  name?: string,
-  id?: string,
+  haunt?: "1" | "2";
+  numericTraits?: Tuple<number, 6>;
+  wearables?: Tuple<number, 16>;
+  collateral?: Collaterals;
+  name?: string;
+  id?: string;
 }
 
-export const getPreviewGotchi = async (provider: Signer | Provider, options?: GotchiOptions): Promise<AavegotchiObject> => {
-  const withSetsNumericTraits: Tuple<number, 6> = options?.numericTraits || [50, 50, 50, 50, 50, 50];
-  const equippedWearables: Tuple<number, 16> = options?.wearables || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+export const getPreviewGotchi = async (
+  provider: Signer | Provider,
+  options?: GotchiOptions
+): Promise<AavegotchiObject> => {
+  const withSetsNumericTraits: Tuple<number, 6> = options?.numericTraits || [
+    50, 50, 50, 50, 50, 50,
+  ];
+  const equippedWearables: Tuple<number, 16> = options?.wearables || [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  ];
+  const hauntId = options?.haunt || "1";
+  const collateral = options?.collateral
+    ? collateralToAddress[options.collateral]
+    : collateralToAddress["aWETH"];
   const svg = await useDiamondCall<Tuple<string, 4>>(provider, {
     name: "previewSideAavegotchi",
-    parameters: [
-      options?.haunt || "1",
-      options?.collateral ? collateralToAddress[options.collateral] : collateralToAddress["aWETH"],
-      withSetsNumericTraits,
-      equippedWearables,
-    ],
+    parameters: [hauntId, collateral, withSetsNumericTraits, equippedWearables],
   });
   const gotchi = {
-    id: options?.id || '0000',
-    name: options?.name || 'Aavegotchi',
+    id: options?.id || "0000",
+    name: options?.name || "Aavegotchi",
     withSetsNumericTraits,
     svg: svg,
     equippedWearables,
     status: 3,
     withSetsRarityScore: 300,
     owner: {
-      id: '0000'
+      id: "0000",
     },
-  }
+    hauntId: BigNumber.from(hauntId),
+    collateral,
+  };
   return gotchi;
-}
-
-
+};
 
 export const getDefaultGotchi = (): AavegotchiObject => {
   return {
-    id: '0000',
-    name: 'Aavegotchi',
+    id: "0000",
+    name: "Aavegotchi",
     withSetsNumericTraits: [50, 50, 50, 50, 50, 50],
     svg: defaultGotchi,
     equippedWearables: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     status: 3,
     withSetsRarityScore: 300,
     owner: {
-      id: '0000'
+      id: "0000",
     },
-  }
-}
+    hauntId: BigNumber.from("1"),
+    collateral: collateralToAddress["aWETH"],
+  };
+};
 
 /**
  * Converts SVG to Blob URL
  * @param {string} svg - SVG you want to turn into Blob URL
  * @returns {string} Object URL of Blob
  */
- export const convertInlineSVGToBlobURL = (svg: string) => {
+export const convertInlineSVGToBlobURL = (svg: string) => {
   const blob = new Blob([svg], { type: "image/svg+xml" });
   return URL.createObjectURL(blob);
 };
@@ -74,7 +83,10 @@ export const getDefaultGotchi = (): AavegotchiObject => {
  * @returns {string} Returns customised SVG
  */
 export const removeBG = (svg: string) => {
-  const styledSvg = svg.replace("<style>", "<style>.gotchi-bg,.wearable-bg{display: none}");
+  const styledSvg = svg.replace(
+    "<style>",
+    "<style>.gotchi-bg,.wearable-bg{display: none}"
+  );
   return styledSvg;
 };
 
@@ -83,8 +95,11 @@ export const removeBG = (svg: string) => {
  * @param {string} svg - SVG you want to customise
  * @returns {string} Returns customised SVG
  */
- export const removeShadow = (svg: string) => {
-  const styledSvg = svg.replace("<style>", "<style>.gotchi-shadow{display: none}");
+export const removeShadow = (svg: string) => {
+  const styledSvg = svg.replace(
+    "<style>",
+    "<style>.gotchi-shadow{display: none}"
+  );
   return styledSvg;
 };
 
@@ -164,26 +179,34 @@ export const bounceAnimation = (svg: string) => {
   return styledSvg;
 };
 
-
 /**
  * Adds SVG styling to Aavegotchi to raise its arms
  * @param {string} svg - SVG you want to customise
- * @param {{left?: number, right?: number}} arms - Wearable id of arms for unique animations 
+ * @param {{left?: number, right?: number}} arms - Wearable id of arms for unique animations
  * @returns {string} Returns customised SVG
  */
-export const raiseHands = (svg: string, arms?: {left?: number, right?: number}) => {
-  const leftArm = (arms?.left && [207, 217, 223].includes(arms?.left)) ? `
+export const raiseHands = (
+  svg: string,
+  arms?: { left?: number; right?: number }
+) => {
+  const leftArm =
+    arms?.left && [207, 217, 223].includes(arms?.left)
+      ? `
       .wearable-hand-left {
         transform: translateY(calc(14px + var(--hand_translateY, -4px))) scaleY(-1);
         transform-origin: 50% 50%;
       }
-    ` : ''
-  const rightArm = (arms?.right && [207, 217, 223].includes(arms?.right)) ? `
+    `
+      : "";
+  const rightArm =
+    arms?.right && [207, 217, 223].includes(arms?.right)
+      ? `
     .wearable-hand-right {
       transform: translateY(calc(14px + var(--hand_translateY, -4px))) scaleY(-1);
       transform-origin: 50% 50%;
     }
-  ` : ``
+  `
+      : ``;
 
   const style = `
     .gotchi-handsDownClosed {
@@ -267,16 +290,15 @@ export function replaceParts(svg: string, element: ReplaceElement) {
   return div.innerHTML;
 }
 
-
 export type CustomiseOptions = {
-  removeBg?: boolean,
-  eyes?: keyof typeof eyes,
-  mouth?: keyof typeof mouths,
-  float?: boolean,
-  animate?: boolean,
-  armsUp?: boolean,
-  removeShadow?: boolean,
-}
+  removeBg?: boolean;
+  eyes?: keyof typeof eyes;
+  mouth?: keyof typeof mouths;
+  float?: boolean;
+  animate?: boolean;
+  armsUp?: boolean;
+  removeShadow?: boolean;
+};
 
 /**
  * Customise Aavegotchi SVG
@@ -285,30 +307,43 @@ export type CustomiseOptions = {
  * @param {Tuple<number, 16>} equipped - Equipped wearables (Only necessary for raised mechanical arms)
  * @returns {string} Returns customised SVG
  */
-export const customiseSvg = (svg: string, options: CustomiseOptions, equipped?: Tuple<number, 16>) => {
+export const customiseSvg = (
+  svg: string,
+  options: CustomiseOptions,
+  equipped?: Tuple<number, 16>
+) => {
   let styledSvg = svg;
   (Object.keys(options) as Array<keyof typeof options>).map((option) => {
     const value = options[option];
     if (value) {
       switch (option) {
-        case 'removeBg':
-          return styledSvg = removeBG(styledSvg);
-        case 'eyes':
-          return styledSvg = replaceParts(styledSvg, {target: option, replaceSvg: value as keyof typeof eyes});
-        case 'mouth':
-          return styledSvg = replaceParts(styledSvg, {target: option, replaceSvg: value as keyof typeof mouths});
-        case 'animate':
-          return styledSvg = bounceAnimation(styledSvg);
-        case 'float':
-          return styledSvg = addIdleUp(styledSvg);
-        case 'armsUp':
-          return styledSvg = raiseHands(styledSvg, equipped ? {left: equipped[4], right: equipped[5]} : undefined);
-        case 'removeShadow':
-          return styledSvg = removeShadow(styledSvg);
+        case "removeBg":
+          return (styledSvg = removeBG(styledSvg));
+        case "eyes":
+          return (styledSvg = replaceParts(styledSvg, {
+            target: option,
+            replaceSvg: value as keyof typeof eyes,
+          }));
+        case "mouth":
+          return (styledSvg = replaceParts(styledSvg, {
+            target: option,
+            replaceSvg: value as keyof typeof mouths,
+          }));
+        case "animate":
+          return (styledSvg = bounceAnimation(styledSvg));
+        case "float":
+          return (styledSvg = addIdleUp(styledSvg));
+        case "armsUp":
+          return (styledSvg = raiseHands(
+            styledSvg,
+            equipped ? { left: equipped[4], right: equipped[5] } : undefined
+          ));
+        case "removeShadow":
+          return (styledSvg = removeShadow(styledSvg));
         default:
           return styledSvg;
       }
     }
-  })
+  });
   return styledSvg;
-}
+};
